@@ -1,6 +1,6 @@
 from typing import Optional
 
-VALID_LEVELS = {"INFO", "WARNING", "ERROR" , "WARNING"}
+VALID_LEVELS = {"INFO", "WARNING", "ERROR"}
 
 def parse_log_line(text : str) -> Optional[dict]:
         cleaned_text = text.strip()

@@ -1,5 +1,8 @@
 from analyzer.parser import parse_log_line
 from analyzer.parser import parse_log_lines
+from analyzer.analyzer import count_log_levels
+from analyzer.analyzer import get_errors
+
 
 def test_parsing_a_valid_log_line():
     parse_log_lines_demo = "INFO Server started"
@@ -94,4 +97,52 @@ def test_multiline_logs_with_invalid_line():
             'level': 'ERROR',
             'message': 'Database connection failed'
         }
+    ]
+
+def test_count_log_levels():
+    set1 = [
+    {
+        "level": "ERROR",
+        "message": "Database connection failed"
+    },
+    {
+        "level": "INFO",
+        "message": "Server started"
+    }
+]
+
+    result = count_log_levels(set1)
+
+    assert result == {
+        "INFO": 1,
+        "WARNING": 0,
+        "ERROR": 1
+    }
+
+def test_get_errors():
+
+    test_set = [
+        {
+            "level": "INFO",
+            "message": "Server started"
+        },
+        {
+            "level": "ERROR",
+            "message": "Database connection failed"
+        },
+        {
+            "level": "WARNING",
+            "message": "Disk space is low"
+        },
+        {
+            "level": "ERROR",
+            "message": "Authentication failed"
+        }
+    ]
+
+    result = get_errors(test_set)
+
+    assert result == [
+        "Database connection failed",
+        "Authentication failed"
     ]
