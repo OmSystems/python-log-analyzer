@@ -2,36 +2,38 @@ from typing import Optional
 
 VALID_LEVELS = {"INFO", "WARNING", "ERROR"}
 
-def parse_log_line(text : str) -> Optional[dict]:
-        cleaned_text = text.strip()
-        parts = cleaned_text.split(" ", 1)
+def parse_log_line(text: str) -> Optional[dict]:
+    cleaned_text = text.strip()
+    parts = cleaned_text.split(maxsplit=3)
 
-        if len(parts) < 2:
-            return None
+    if len(parts) < 4:
+        return None
 
-        level = parts[0]
+    timestamp = parts[0]
+    level = parts[1]
+    ip = parts[2]
+    message = parts[3]
 
-        if level not in VALID_LEVELS:
-            return None
+    if level not in VALID_LEVELS:
+        return None
 
-        message = parts[1]
-
-        return {
-            "level": level,
-            "message": message
-        }
+    return {
+        "timestamp": timestamp,
+        "level": level,
+        "ip": ip,
+        "message": message
+    }
 
 def parse_log_lines(lines : list[str]) -> list[dict]:
 
-    list1=[]
+    parsed_logs = []
 
     for line_number, each_line in enumerate(lines, start=1):
-        dictionary_answer = parse_log_line(each_line)
+        parsed_log = parse_log_line(each_line)
 
-        if dictionary_answer is None:
-            print(f"Malformed log at line {line_number}")
+        if parsed_log is None:
             continue
 
-        list1.append(dictionary_answer)
+        parsed_logs.append(parsed_log)
 
-    return list1
+    return parsed_logs
