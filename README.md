@@ -59,7 +59,7 @@ python3 main.py does_not_exist.log
 ## Running tests
 
 ```bash
-pip install pytest
+pip install -r requirements-dev.txt
 pytest -v
 ```
 
