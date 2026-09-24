@@ -23,16 +23,38 @@ the tool:
 - Counts how many lines fall into each level (INFO / WARNING / ERROR)
 - Extracts and lists all ERROR messages
 
+## Setup
+
+```bash
+git clone https://github.com/OmSystems/python-log-analyzer.git
+cd python-log-analyzer
+```
+
+No external dependencies are required to run the tool itself (standard library only). `pytest` is only needed if you want to run the tests — see below.
+
 ## Usage
 
 ```bash
-python3 main.py
+python3 main.py <path_to_log_file>
 ```
 
-This reads `sample_logs/app.log` and prints:
-1. The list of parsed log entries
+Example, using the sample log included in the repo:
+
+```bash
+python3 main.py sample_logs/app.log
+```
+
+This prints:
+1. Total log entries parsed, out of total lines read, with how many were skipped as invalid
 2. A count of log levels, e.g. `{'INFO': 2, 'WARNING': 1, 'ERROR': 4}`
 3. A list of all error messages
+
+If the given path doesn't exist, the tool prints a clear error and exits (no crash/traceback):
+
+```bash
+python3 main.py does_not_exist.log
+# Error: Log file 'does_not_exist.log' does not exist.
+```
 
 ## Running tests
 
