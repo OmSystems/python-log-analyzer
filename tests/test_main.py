@@ -83,7 +83,6 @@ def test_cli_end_to_end(tmp_path):
         text=True,
         cwd=Path(__file__).resolve().parent.parent,
     )
-
     assert result.returncode == 0
     assert "'ERROR': 1" in result.stdout
     assert "Disk full" in result.stdout

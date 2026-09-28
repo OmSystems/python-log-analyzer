@@ -24,11 +24,11 @@ def parse_log_line(text: str) -> Optional[dict]:
         "message": message
     }
 
-def parse_log_lines(lines : list[str]) -> list[dict]:
+def parse_log_lines(lines: list[str]) -> list[dict]:
 
     parsed_logs = []
 
-    for line_number, each_line in enumerate(lines, start=1):
+    for each_line in lines:
         parsed_log = parse_log_line(each_line)
 
         if parsed_log is None:

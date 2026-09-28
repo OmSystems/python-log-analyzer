@@ -11,7 +11,7 @@ def main():
 
     try:
         lines = read_log_file(args.file)
-    except (FileNotFoundError, ValueError) as e:
+    except (OSError, ValueError) as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
@@ -24,6 +24,5 @@ def main():
 
     errors = get_errors(parsed_logs)
     print(errors)
-    
 if __name__ == "__main__":
     main()
