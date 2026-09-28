@@ -1,0 +1,8 @@
+2026-08-26T12:30:01 INFO 192.168.1.10 Server started
+2026-08-26T12:30:15 WARNING 192.168.1.10 High memory usage
+2026-08-26T12:31:02 ERROR 192.168.1.50 Authentication failed
+2026-08-26T12:31:15 ERROR 192.168.1.50 Authentication failed
+2026-08-26T12:31:29 ERROR 192.168.1.50 Authentication failed
+2026-08-26T12:32:01 INFO 192.168.1.10 User logged in
+2026-08-26T12:32:45 ERROR 192.168.1.50 Database connection failed
+Invalid log line    
