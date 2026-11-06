@@ -1,7 +1,6 @@
 from analyzer.parser import parse_log_line
 from analyzer.parser import parse_log_lines
-from analyzer.analyzer import count_log_levels
-from analyzer.analyzer import get_errors
+
 
 
 def test_parsing_a_valid_log_line():
@@ -33,6 +32,7 @@ def test_perfect_log_line():
         'message': 'Database connection failed'
     }
 
+
 def test_empty_log():
     empty_log = " "
     result = parse_log_line(empty_log)
@@ -40,14 +40,14 @@ def test_empty_log():
     assert result is None
 
 def test_parsing_a_warning_log_line():
-    warning_log = "2026-08-26T12:30:15 WARNING 192.168.1.10 Disk space is lows"
+    warning_log = "2026-08-26T12:30:15 WARNING 192.168.1.10 Disk space is low"
     result = parse_log_line(warning_log)
 
     assert result == {
         'timestamp': '2026-08-26T12:30:15',
         'level': 'WARNING',
         'ip': '192.168.1.10',
-        'message': 'Disk space is lows'
+        'message': 'Disk space is low'
     }
 
 def test_parsing_an_unknown_log_level():
@@ -70,6 +70,9 @@ def test_multiline_logs():
         "2026-08-26T12:30:15 WARNING 192.168.1.10 Disk space is low",
         "2026-08-26T12:32:45 ERROR 192.168.1.50 Database connection failed"
     ]
+    result = parse_log_lines(multi_line_logs)
+    assert len(result) == 3
+    assert [entry["level"] for entry in result] == ["INFO", "WARNING", "ERROR"]
 
 
 def test_log_line_with_extra_spaces_in_message():

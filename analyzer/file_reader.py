@@ -7,8 +7,10 @@ def read_log_file(path: str) -> list[str]:
 
     file_path = Path(path)
 
-    if not file_path.is_file():
+    if not file_path.exists():
         raise FileNotFoundError(f"Log file '{path}' does not exist.")
 
+    if not file_path.is_file():
+        raise IsADirectoryError(f"Path '{path}' is not a file.")
     with file_path.open("r", encoding="utf-8") as file:
         return file.readlines()
