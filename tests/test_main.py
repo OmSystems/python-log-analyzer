@@ -86,3 +86,57 @@ def test_cli_end_to_end(tmp_path):
     assert result.returncode == 0
     assert "'ERROR': 1" in result.stdout
     assert "Disk full" in result.stdout
+
+#cli argument
+
+def test_cli_custom_threshold_window_and_year(tmp_path, capsys, monkeypatch):
+    log_file = tmp_path / "auth.log"
+
+    log_file.write_text(
+        "Nov  4 10:15:00 ubuntu sshd[1001]: Failed password for admin from 203.0.113.5 port 5001 ssh2\n"
+        "Nov  4 10:15:20 ubuntu sshd[1002]: Failed password for root from 203.0.113.5 port 5002 ssh2\n"
+        "Nov  4 10:15:40 ubuntu sshd[1003]: Failed password for test from 203.0.113.5 port 5003 ssh2\n"
+    )
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "main.py",
+            str(log_file),
+            "--threshold", "3",
+            "--window", "60",
+            "--year", "2026"
+        ]
+    )
+
+    main()
+
+    captured = capsys.readouterr()
+
+    assert "203.0.113.5: 3 failed attempts" in captured.out
+    assert "detected with 3 failed attempts within 60 seconds" in captured.out
+
+def test_cli_rejects_invalid_threshold(monkeypatch):
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["main.py", "sample.log", "--threshold", "0"]
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main()
+
+    assert exc_info.value.code == 2
+
+def test_cli_rejects_negative_window(monkeypatch):
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["main.py", "sample.log", "--window", "-10"]
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main()
+
+    assert exc_info.value.code == 2

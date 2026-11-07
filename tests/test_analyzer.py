@@ -278,3 +278,154 @@ def test_detect_successful_login_after_failed_attempts():
     )
 
     assert result == {"203.0.113.5": 5}
+def test_count_different_ssh_failure_types():
+    logs = [
+        {
+            "process_name": "sshd",
+            "message": "Invalid user admin from 203.0.113.5",
+            "source_ip": "203.0.113.5",
+            "pid": "1001"
+        },
+        {
+            "process_name": "sshd",
+            "message": "Failed publickey for root from 203.0.113.6",
+            "source_ip": "203.0.113.6",
+            "pid": "1002"
+        },
+        {
+            "process_name": "sshd",
+            "message": "Connection closed by invalid user test 203.0.113.7 port 22",
+            "source_ip": "203.0.113.7",
+            "pid": "1003"
+        },
+        {
+            "process_name": "sshd",
+            "message": "Connection closed by authenticating user admin 203.0.113.8 port 22 [preauth]",
+            "source_ip": "203.0.113.8",
+            "pid": "1004"
+        }
+    ]
+
+    result = count_failed_ssh_logins(logs)
+
+    assert result == {
+        "203.0.113.5": 1,
+        "203.0.113.6": 1,
+        "203.0.113.7": 1,
+        "203.0.113.8": 1
+    }
+
+
+def test_count_sshd_session_failures():
+    logs = [
+        {
+            "process_name": "sshd-session",
+            "message": "Failed password for admin",
+            "source_ip": "203.0.113.5",
+            "pid": "2001"
+        }
+    ]
+
+    result = count_failed_ssh_logins(logs)
+
+    assert result == {"203.0.113.5": 1}
+
+
+def test_deduplicate_failures_from_same_pid():
+    logs = [
+        {
+            "process_name": "sshd",
+            "message": "Invalid user admin from 203.0.113.5",
+            "source_ip": "203.0.113.5",
+            "pid": "3001"
+        },
+        {
+            "process_name": "sshd-session",
+            "message": "Failed password for invalid user admin",
+            "source_ip": "203.0.113.5",
+            "pid": "3001"
+        },
+        {
+            "process_name": "sshd-session",
+            "message": "Connection closed by invalid user admin",
+            "source_ip": "203.0.113.5",
+            "pid": "3001"
+        }
+    ]
+
+    result = count_failed_ssh_logins(logs)
+
+    assert result == {"203.0.113.5": 1}
+
+
+def test_count_separate_connections_from_same_ip():
+    logs = [
+        {
+            "process_name": "sshd",
+            "message": "Failed password for admin",
+            "source_ip": "203.0.113.5",
+            "pid": "4001"
+        },
+        {
+            "process_name": "sshd-session",
+            "message": "Failed password for root",
+            "source_ip": "203.0.113.5",
+            "pid": "4002"
+        }
+    ]
+
+    result = count_failed_ssh_logins(logs)
+
+    assert result == {"203.0.113.5": 2}
+
+def test_detect_brute_force_with_sshd_session():
+    start_time = datetime(2026, 11, 4, 10, 15, 0)
+
+    logs = [
+        {
+            "process_name": "sshd-session",
+            "message": "Failed password for admin",
+            "source_ip": "203.0.113.5",
+            "pid": str(5000 + i),
+            "timestamp": start_time + timedelta(seconds=i * 10)
+        }
+        for i in range(5)
+    ]
+
+    result = detect_brute_force(
+        logs,
+        threshold=5,
+        window_seconds=60
+    )
+
+    assert result == {"203.0.113.5": 5}
+
+def test_successful_login_after_failures_with_sshd_session():
+    start_time = datetime(2026, 11, 4, 10, 15, 0)
+
+    logs = []
+
+    for i in range(5):
+        logs.append({
+            "process_name": "sshd-session",
+            "message": "Failed password for admin",
+            "source_ip": "203.0.113.5",
+            "pid": str(6000 + i),
+            "timestamp": start_time + timedelta(seconds=i * 10)
+        })
+
+    logs.append({
+        "process_name": "sshd-session",
+        "message": "Accepted password for admin",
+        "source_ip": "203.0.113.5",
+        "pid": "6005",
+        "timestamp": start_time + timedelta(seconds=50)
+    })
+
+    result = detect_successful_login_after_failures(
+        logs,
+        threshold=5,
+        window_seconds=60
+    )
+
+    assert result == {"203.0.113.5": 5}

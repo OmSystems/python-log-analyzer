@@ -2,14 +2,14 @@ import argparse
 import sys
 
 from analyzer.file_reader import read_log_file
-from analyzer.parser import parse_log_lines
+from analyzer.parser import parse_log_line
 
 from analyzer.analyzer import (
     count_log_levels,
     get_errors,
     count_failed_ssh_logins,
     detect_brute_force,
-    detect_successful_login_after_failures
+    detect_successful_login_after_failures,
 )
 
 from analyzer.openssh_parser import parse_openssh_log_line
@@ -21,35 +21,84 @@ def main():
     )
 
     parser.add_argument("file", help="Path to the log file")
+
+    parser.add_argument(
+        "--threshold",
+        type=int,
+        default=5,
+        help="Minimum failed attempts required for an alert (default: 5)",
+    )
+
+    parser.add_argument(
+        "--window",
+        type=int,
+        default=60,
+        help="Detection time window in seconds (default: 60)",
+    )
+
+    parser.add_argument(
+        "--year",
+        type=int,
+        default=None,
+        help="Year for classic syslog timestamps (default: current local year)",
+    )
+
     args = parser.parse_args()
 
-    # Read log file
+    if args.threshold < 1:
+        parser.error("--threshold must be at least 1")
+
+    if args.window < 0:
+        parser.error("--window cannot be negative")
+
+    # --------------------------------------------------
+    # READ LOG FILE
+    # --------------------------------------------------
+
     try:
         lines = read_log_file(args.file)
 
-    except (OSError, ValueError) as e:
-        print(f"Error: {e}", file=sys.stderr)
+    except (OSError, ValueError) as error:
+        print(f"Error: {error}", file=sys.stderr)
         sys.exit(1)
 
-    # Application log parsing
-    parsed_logs = parse_log_lines(lines)
+    # --------------------------------------------------
+    # PARSE APPLICATION AND OPENSSH LOGS
+    # --------------------------------------------------
 
-    # OpenSSH log parsing
+    parsed_logs = []
     ssh_parsed_logs = []
+    parsed_line_count = 0
 
     for line in lines:
-        parsed = parse_openssh_log_line(line)
 
-        if parsed is not None:
-            ssh_parsed_logs.append(parsed)
+        app_log = parse_log_line(line)
+        ssh_log = parse_openssh_log_line(
+            line,
+            year=args.year,
+        )
 
-    # Calculate valid and invalid entries
-    total_valid_entries = len(parsed_logs) + len(ssh_parsed_logs)
-    invalid_entries = len(lines) - total_valid_entries
+        if app_log is not None:
+            parsed_logs.append(app_log)
+
+        if ssh_log is not None:
+            ssh_parsed_logs.append(ssh_log)
+
+        if app_log is not None or ssh_log is not None:
+            parsed_line_count += 1
+
+    total_lines = len(lines)
+    skipped_lines = total_lines - parsed_line_count
+
+    # --------------------------------------------------
+    # PARSING STATISTICS
+    # --------------------------------------------------
 
     print(
-        f"Total log entries: {total_valid_entries} "
-        f"({len(lines)} read, {invalid_entries} skipped as invalid)"
+        f"Total log entries: {parsed_line_count} "
+        f"({total_lines} read, "
+        f"{parsed_line_count} parsed, "
+        f"{skipped_lines} skipped as invalid)"
     )
 
     # --------------------------------------------------
@@ -59,9 +108,11 @@ def main():
     print("\n--- Application Log Analysis ---")
 
     log_counts = count_log_levels(parsed_logs)
+
     print("Log levels:", log_counts)
 
     errors = get_errors(parsed_logs)
+
     print("Error messages:", errors)
 
     # --------------------------------------------------
@@ -73,31 +124,32 @@ def main():
     failed_ssh = count_failed_ssh_logins(ssh_parsed_logs)
 
     if failed_ssh:
-        for ip, count in failed_ssh.items():
+        for ip, count in sorted(
+            failed_ssh.items(),
+            key=lambda item: item[1],
+            reverse=True,
+        ):
             print(f"{ip}: {count} failed attempts")
     else:
         print("No failed SSH login attempts found.")
 
     # --------------------------------------------------
-    # TIME-WINDOW BRUTE-FORCE DETECTION
+    # BRUTE-FORCE DETECTION
     # --------------------------------------------------
 
     print("\n--- Brute-Force Detection ---")
 
-    threshold = 5
-    window_seconds = 70
-
     suspicious_ips = detect_brute_force(
         ssh_parsed_logs,
-        threshold=threshold,
-        window_seconds=window_seconds
+        threshold=args.threshold,
+        window_seconds=args.window,
     )
 
     if suspicious_ips:
         for ip, count in suspicious_ips.items():
             print(
                 f"ALERT: {ip} detected with {count} failed attempts "
-                f"within {window_seconds} seconds"
+                f"within {args.window} seconds"
             )
     else:
         print("No brute-force activity detected.")
@@ -110,15 +162,16 @@ def main():
 
     suspicious_logins = detect_successful_login_after_failures(
         ssh_parsed_logs,
-        threshold=threshold,
-        window_seconds=window_seconds
+        threshold=args.threshold,
+        window_seconds=args.window,
     )
 
     if suspicious_logins:
         for ip, count in suspicious_logins.items():
             print(
                 f"ALERT: {ip} successfully authenticated after "
-                f"{count} failed attempts within {window_seconds} seconds"
+                f"{count} failed attempts "
+                f"within {args.window} seconds"
             )
     else:
         print("No suspicious successful login events detected.")
